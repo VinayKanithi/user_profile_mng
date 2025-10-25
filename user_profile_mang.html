@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Profiles Management</title>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .card-shadow {
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      .user-card {
+        transition: all 0.3s ease;
+      }
+
+      .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+      }
+
+      .modal-backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+      }
+
+      .spinner {
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #667eea;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .fade-in {
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid white;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .avatar-small {
+        width: 50px;
+        height: 50px;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .error-message {
+        animation: shake 0.3s ease-in-out;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-10px);
+        }
+        75% {
+          transform: translateX(10px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      // Utility functions for localStorage
+      const STORAGE_KEY = "userProfiles";
+
+      const getStoredUsers = () => {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+          console.error("Error reading from localStorage:", error);
+          return [];
+        }
+      };
+
+      const saveUsers = (users) => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+        } catch (error) {
+          console.error("Error saving to localStorage:", error);
+        }
+      };
+
+      // Generate initial sample data if empty
+      const initializeData = () => {
+        const existing = getStoredUsers();
+        if (existing.length === 0) {
+          const sampleUsers = [
+            {
+              id: 1,
+              name: "John Doe",
+              email: "john.doe@example.com",
+              phone: "+1 (555) 123-4567",
+              role: "Frontend Developer",
+              department: "Engineering",
+              location: "San Francisco, CA",
+              avatar:
+                "https://ui-avatars.com/api/?name=John+Doe&background=667eea&color=fff&size=200",
+              joinDate: "2023-01-15",
+              status: "Active",
+            },
+            {
+              id: 2,
+              name: "Jane Smith",
+              email: "jane.smith@example.com",
+              phone: "+1 (555) 234-5678",
+              role: "Product Manager",
+              department: "Product",
+              location: "New York, NY",
+              avatar:
+                "https://ui-avatars.com/api/?name=Jane+Smith&background=764ba2&color=fff&size=200",
+              joinDate: "2023-03-20",
+              status: "Active",
+            },
+            {
+              id: 3,
+              name: "Mike Johnson",
+              email: "mike.johnson@example.com",
+              phone: "+1 (555) 345-6789",
+              role: "UI/UX Designer",
+              department: "Design",
+              location: "Austin, TX",
+              avatar:
+                "https://ui-avatars.com/api/?name=Mike+Johnson&background=f093fb&color=fff&size=200",
+              joinDate: "2022-11-10",
+              status: "Active",
+            },
+            {
+              id: 4,
+              name: "Sarah Williams",
+              email: "sarah.williams@example.com",
+              phone: "+1 (555) 456-7890",
+              role: "Backend Developer",
+              department: "Engineering",
+              location: "Seattle, WA",
+              avatar:
+                "https://ui-avatars.com/api/?name=Sarah+Williams&background=4facfe&color=fff&size=200",
+              joinDate: "2023-05-12",
+              status: "Active",
+            },
+          ];
+          saveUsers(sampleUsers);
+          return sampleUsers;
+        }
+        return existing;
+      };
+
+      // Main App Component
+      function App() {
+        const [users, setUsers] = useState([]);
+        const [filteredUsers, setFilteredUsers] = useState([]);
+        const [searchTerm, setSearchTerm] = useState("");
+        const [isLoading, setIsLoading] = useState(true);
+        const [error, setError] = useState(null);
+        const [showModal, setShowModal] = useState(false);
+        const [modalMode, setModalMode] = useState("add"); // 'add', 'edit', 'view'
+        const [selectedUser, setSelectedUser] = useState(null);
+        const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+        const [userToDelete, setUserToDelete] = useState(null);
+
+        // Load users on mount
+        useEffect(() => {
+          setIsLoading(true);
+          setTimeout(() => {
+            try {
+              const loadedUsers = initializeData();
+              setUsers(loadedUsers);
+              setFilteredUsers(loadedUsers);
+              setError(null);
+            } catch (err) {
+              setError("Failed to load users. Please try again.");
+            } finally {
+              setIsLoading(false);
+            }
+          }, 500);
+        }, []);
+
+        // Filter users based on search
+        useEffect(() => {
+          const filtered = users.filter(
+            (user) =>
+              user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              user.department.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          setFilteredUsers(filtered);
+        }, [searchTerm, users]);
+
+        const handleAddUser = () => {
+          setModalMode("add");
+          setSelectedUser(null);
+          setShowModal(true);
+        };
+
+        const handleEditUser = (user) => {
+          setModalMode("edit");
+          setSelectedUser(user);
+          setShowModal(true);
+        };
+
+        const handleViewUser = (user) => {
+          setModalMode("view");
+          setSelectedUser(user);
+          setShowModal(true);
+        };
+
+        const handleDeleteUser = (user) => {
+          setUserToDelete(user);
+          setShowDeleteConfirm(true);
+        };
+
+        const confirmDelete = () => {
+          if (userToDelete) {
+            const updatedUsers = users.filter((u) => u.id !== userToDelete.id);
+            setUsers(updatedUsers);
+            saveUsers(updatedUsers);
+            setShowDeleteConfirm(false);
+            setUserToDelete(null);
+          }
+        };
+
+        const handleSaveUser = (userData) => {
+          setIsLoading(true);
+          setTimeout(() => {
+            try {
+              let updatedUsers;
+              if (modalMode === "add") {
+                const newUser = {
+                  ...userData,
+                  id: Date.now(),
+                  avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    userData.name
+                  )}&background=667eea&color=fff&size=200`,
+                  joinDate: new Date().toISOString().split("T")[0],
+                  status: "Active",
+                };
+                updatedUsers = [...users, newUser];
+              } else {
+                updatedUsers = users.map((u) =>
+                  u.id === selectedUser.id ? { ...u, ...userData } : u
+                );
+              }
+              setUsers(updatedUsers);
+              saveUsers(updatedUsers);
+              setShowModal(false);
+              setError(null);
+            } catch (err) {
+              setError("Failed to save user. Please try again.");
+            } finally {
+              setIsLoading(false);
+            }
+          }, 300);
+        };
+
+        if (isLoading && users.length === 0) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="spinner mx-auto mb-4"></div>
+                <p className="text-white text-lg">Loading users...</p>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="min-h-screen p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="card-shadow bg-white rounded-2xl p-6 mb-8 fade-in">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                      User Profiles Management
+                    </h1>
+                    <p className="text-gray-600">
+                      Manage and organize your team members
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAddUser}
+                    className="btn-primary text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add New User
+                  </button>
+                </div>
+              </div>
+
+              {/* Search and Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="md:col-span-3">
+                  <div className="card-shadow bg-white rounded-2xl p-4 fade-in">
+                    <div className="relative">
+                      <svg
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="Search by name, email, role, or department..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg text-gray-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="card-shadow bg-white rounded-2xl p-6 fade-in">
+                  <div className="text-center">
+                    <p className="text-gray-500 text-sm mb-1">Total Users</p>
+                    <p className="text-4xl font-bold text-purple-600">
+                      {users.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg error-message">
+                  <div className="flex items-center">
+                    <svg
+                      className="w-6 h-6 text-red-500 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <p className="text-red-700">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Users Grid */}
+              {filteredUsers.length === 0 ? (
+                <div className="card-shadow bg-white rounded-2xl p-12 text-center fade-in">
+                  <svg
+                    className="w-24 h-24 mx-auto text-gray-300 mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <p className="text-xl text-gray-500">No users found</p>
+                  <p className="text-gray-400 mt-2">
+                    Try adjusting your search or add a new user
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredUsers.map((user) => (
+                    <UserCard
+                      key={user.id}
+                      user={user}
+                      onView={handleViewUser}
+                      onEdit={handleEditUser}
+                      onDelete={handleDeleteUser}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal */}
+            {showModal && (
+              <UserModal
+                mode={modalMode}
+                user={selectedUser}
+                onClose={() => setShowModal(false)}
+                onSave={handleSaveUser}
+              />
+            )}
+
+            {/* Delete Confirmation */}
+            {showDeleteConfirm && (
+              <DeleteConfirmModal
+                user={userToDelete}
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                  setShowDeleteConfirm(false);
+                  setUserToDelete(null);
+                }}
+              />
+            )}
+          </div>
+        );
+      }
+
+      // User Card Component
+      function UserCard({ user, onView, onEdit, onDelete }) {
+        return (
+          <div className="user-card card-shadow bg-white rounded-2xl p-6 fade-in">
+            <div className="flex items-start justify-between mb-4">
+              <img src={user.avatar} alt={user.name} className="avatar" />
+              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                {user.status}
+              </span>
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-800 mb-1">
+              {user.name}
+            </h3>
+            <p className="text-purple-600 font-semibold mb-3">{user.role}</p>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center text-gray-600 text-sm">
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                {user.email}
+              </div>
+              <div className="flex items-center text-gray-600 text-sm">
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                {user.department}
+              </div>
+              <div className="flex items-center text-gray-600 text-sm">
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                {user.location}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => onView(user)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-semibold transition-all text-sm"
+              >
+                View
+              </button>
+              <button
+                onClick={() => onEdit(user)}
+                className="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 py-2 px-4 rounded-lg font-semibold transition-all text-sm"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => onDelete(user)}
+                className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-2 px-4 rounded-lg font-semibold transition-all text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // User Modal Component
+      function UserModal({ mode, user, onClose, onSave }) {
+        const [formData, setFormData] = useState({
+          name: user?.name || "",
+          email: user?.email || "",
+          phone: user?.phone || "",
+          role: user?.role || "",
+          department: user?.department || "",
+          location: user?.location || "",
+        });
+        const [errors, setErrors] = useState({});
+
+        const handleChange = (e) => {
+          const { name, value } = e.target;
+          setFormData((prev) => ({ ...prev, [name]: value }));
+          if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: "" }));
+          }
+        };
+
+        const validate = () => {
+          const newErrors = {};
+          if (!formData.name.trim()) newErrors.name = "Name is required";
+          if (!formData.email.trim()) {
+            newErrors.email = "Email is required";
+          } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            newErrors.email = "Email is invalid";
+          }
+          if (!formData.phone.trim()) newErrors.phone = "Phone is required";
+          if (!formData.role.trim()) newErrors.role = "Role is required";
+          if (!formData.department.trim())
+            newErrors.department = "Department is required";
+          if (!formData.location.trim())
+            newErrors.location = "Location is required";
+
+          setErrors(newErrors);
+          return Object.keys(newErrors).length === 0;
+        };
+
+        const handleSubmit = (e) => {
+          e.preventDefault();
+          if (validate()) {
+            onSave(formData);
+          }
+        };
+
+        if (mode === "view") {
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+              onClick={onClose}
+            >
+              <div
+                className="bg-white rounded-2xl max-w-2xl w-full p-8 fade-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-start mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    User Details
+                  </h2>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-200">
+                  <img src={user.avatar} alt={user.name} className="avatar" />
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
+                      {user.name}
+                    </h3>
+                    <p className="text-purple-600 font-semibold text-lg">
+                      {user.role}
+                    </p>
+                    <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold mt-2">
+                      {user.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Email</p>
+                    <p className="text-gray-800 font-semibold">{user.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Phone</p>
+                    <p className="text-gray-800 font-semibold">{user.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Department</p>
+                    <p className="text-gray-800 font-semibold">
+                      {user.department}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Location</p>
+                    <p className="text-gray-800 font-semibold">
+                      {user.location}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Join Date</p>
+                    <p className="text-gray-800 font-semibold">
+                      {new Date(user.joinDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+            onClick={onClose}
+          >
+            <div
+              className="bg-white rounded-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {mode === "add" ? "Add New User" : "Edit User"}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.name ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Enter full name"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.email ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Enter email address"
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.phone ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Enter phone number"
+                  />
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Role *
+                  </label>
+                  <input
+                    type="text"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.role ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Enter job role"
+                  />
+                  {errors.role && (
+                    <p className="text-red-500 text-sm mt-1">{errors.role}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Department *
+                  </label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.department ? "border-red-300" : "border-gray-200"
+                    }`}
+                  >
+                    <option value="">Select department</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Product">Product</option>
+                    <option value="Design">Design</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="HR">HR</option>
+                    <option value="Finance">Finance</option>
+                  </select>
+                  {errors.department && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.department}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Location *
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border-2 rounded-lg ${
+                      errors.location ? "border-red-300" : "border-gray-200"
+                    }`}
+                    placeholder="Enter location"
+                  />
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.location}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 btn-primary text-white py-3 px-6 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  >
+                    {mode === "add" ? "Add User" : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
+      // Delete Confirmation Modal
+      function DeleteConfirmModal({ user, onConfirm, onCancel }) {
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+            onClick={onCancel}
+          >
+            <div
+              className="bg-white rounded-2xl max-w-md w-full p-8 fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg
+                    className="w-8 h-8 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                  Delete User
+                </h3>
+                <p className="text-gray-600">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-gray-800">
+                    {user?.name}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={onConfirm}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-semibold transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Render App
+      ReactDOM.render(<App />, document.getElementById("root"));
+    </script>
+  </body>
+</html>
